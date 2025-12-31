@@ -13,10 +13,16 @@ interface GameCanvasProps {
 const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const crosshairRef = useRef<HTMLDivElement>(null);
+  
+  // Track current window dimensions ref for game loop to access synchronously
+  const dims = useRef({ w: window.innerWidth, h: window.innerHeight });
+  // State to force re-render when dimensions change
+  const [, setTick] = useState(0);
+
   const stateRef = useRef<GameState>(createInitialState(gameSetup, settings));
   const inputRef = useRef({
     keys: {} as Record<string, boolean>,
-    mouse: { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2 },
+    mouse: { x: window.innerWidth / 2, y: window.innerHeight / 2 },
     mouseDown: false
   });
   const gameOverTriggered = useRef(false);
@@ -33,6 +39,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
   } | null>(null);
 
   const [showFullMap, setShowFullMap] = useState(false);
+
+  // Resize Listener
+  useEffect(() => {
+    const handleResize = () => {
+        dims.current = { w: window.innerWidth, h: window.innerHeight };
+        // Recenter mouse input if it was in the middle (optional, keeps aim steady on rotate)
+        // inputRef.current.mouse.x = dims.current.w / 2;
+        // inputRef.current.mouse.y = dims.current.h / 2;
+        setTick(t => t + 1);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -67,8 +86,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
     }
 
     const render = () => {
-      // 1. UPDATE
-      stateRef.current = updateGame(stateRef.current, inputRef.current, 16, settings);
+      const viewW = dims.current.w;
+      const viewH = dims.current.h;
+
+      // 1. UPDATE with current dimensions
+      stateRef.current = updateGame(stateRef.current, inputRef.current, 16, settings, viewW, viewH);
       const state = stateRef.current;
       const player = state.players.find(x => x.id === 'player');
 
@@ -101,24 +123,17 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
           if (state.mode === GameMode.BATTLE_ROYALE) {
               const activePlayers = state.players.filter(p => p.active);
               if (activePlayers.length <= 1) {
-                  // If player is one of them (or only one), they win. If they died earlier, they lost already.
                   const survivor = activePlayers[0];
-                  
-                  // Force score update for proper victory screen
                   if (survivor && survivor.id === 'player') state.scores[Team.ALLIED] = 999;
                   else state.scores[Team.AXIS] = 999;
-                  
                   gameOverTriggered.current = true;
                   onGameOver(survivor && survivor.id === 'player' ? Team.ALLIED : Team.AXIS, state.scores, state.players);
               }
-              // Check if player died in BR
               if (player && !player.active && !gameOverTriggered.current) {
                    gameOverTriggered.current = true;
                    onGameOver(Team.AXIS, state.scores, state.players);
               }
-
           } else {
-            // STANDARD MODES
             if (state.scores[Team.ALLIED] >= 100) {
                 gameOverTriggered.current = true;
                 onGameOver(Team.ALLIED, state.scores, state.players);
@@ -137,12 +152,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
 
       // 2. DRAW MAIN VIEW
       ctx.fillStyle = state.mapTheme.backgroundColor; 
-      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      ctx.fillRect(0, 0, viewW, viewH);
 
       ctx.save();
       ctx.translate(-state.camera.x, -state.camera.y);
 
-      // Draw Grid / Floor - Use mapWidth/Height
+      // Draw Grid / Floor
       ctx.strokeStyle = state.mapTheme.gridColor;
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -150,21 +165,18 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
       for (let y = 0; y <= state.mapHeight; y += 100) { ctx.moveTo(0, y); ctx.lineTo(state.mapWidth, y); }
       ctx.stroke();
 
-      // Draw Zone (Underneath everything)
+      // Draw Zone
       if (state.zone) {
           ctx.beginPath();
           ctx.arc(state.zone.x, state.zone.y, state.zone.radius, 0, Math.PI * 2);
           ctx.fillStyle = '#ff000022'; 
-          
-          // Draw Safe Zone border
           ctx.strokeStyle = '#00ff00';
           ctx.lineWidth = 5;
           ctx.stroke();
           
-          // Draw Gas Overlay (Giant Donut) using evenodd rule or just huge rect
           ctx.beginPath();
-          ctx.arc(state.zone.x, state.zone.y, state.zone.radius, 0, Math.PI * 2, true); // Hole (Counter Clockwise)
-          ctx.rect(state.zone.x - 5000, state.zone.y - 5000, 10000, 10000); // Outer
+          ctx.arc(state.zone.x, state.zone.y, state.zone.radius, 0, Math.PI * 2, true);
+          ctx.rect(state.zone.x - 5000, state.zone.y - 5000, 10000, 10000); 
           ctx.fillStyle = '#ff000044';
           ctx.fill();
       }
@@ -189,25 +201,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
               if (!item.active) return;
               ctx.save();
               ctx.translate(item.pos.x, item.pos.y);
-              // Bob animation
               const offset = Math.sin(Date.now() / 200) * 3;
               ctx.translate(0, offset);
-              
-              // Glow
               ctx.shadowColor = WEAPONS[item.weapon].color;
               ctx.shadowBlur = 10;
-              
-              // Draw Box/Icon
               ctx.fillStyle = '#222';
               ctx.fillRect(-10, -5, 20, 10);
               ctx.fillStyle = WEAPONS[item.weapon].color;
               ctx.fillRect(-8, -3, 16, 6);
-              
               ctx.restore();
           });
       }
 
-      // Draw Obstacles (Walls)
+      // Draw Obstacles
       state.obstacles.forEach(o => {
           ctx.fillStyle = o.type === 'WINDOW' ? '#60a5faaa' : state.mapTheme.obstacleColor;
           if (o.type === 'WALL') ctx.fillStyle = state.mapTheme.wallColor;
@@ -215,11 +221,11 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
           ctx.fillRect(o.x, o.y, o.w, o.h);
       });
 
-      // Draw Buildings (Roofs)
+      // Draw Buildings
       state.buildings.forEach(b => {
          let alpha = 1.0;
          if (player && player.pos.x > b.x && player.pos.x < b.x + b.w && player.pos.y > b.y && player.pos.y < b.y + b.h) {
-             alpha = 0.2; // Transparent roof
+             alpha = 0.2; 
          }
          ctx.fillStyle = b.roofColor;
          ctx.globalAlpha = alpha;
@@ -239,13 +245,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
           
           ctx.beginPath();
           ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
-          // For BR/FFA, everyone is enemy colored except self
           const isEnemy = state.mode === GameMode.FFA || state.mode === GameMode.GUN_GAME || state.mode === GameMode.BATTLE_ROYALE 
                ? p.id !== 'player' 
                : p.team !== (player?.team || Team.ALLIED);
                
           ctx.fillStyle = isEnemy ? TEAM_COLORS.AXIS : TEAM_COLORS.ALLIED;
-          if (p.id === 'player') ctx.fillStyle = '#fff'; // Self is white
+          if (p.id === 'player') ctx.fillStyle = '#fff';
 
           ctx.fill();
           ctx.strokeStyle = '#fff';
@@ -256,7 +261,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
           ctx.fillRect(0, -5, 30, 10); 
           ctx.restore();
           
-          // Health Bar
           ctx.fillStyle = 'red';
           ctx.fillRect(p.pos.x - 20, p.pos.y - 30, 40, 5);
           ctx.fillStyle = 'green';
@@ -277,14 +281,14 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
           ctx.stroke();
       });
 
-      ctx.restore(); // End Main View Camera
+      ctx.restore();
 
       // 3. DRAW MINIMAP
-      drawMinimap(ctx, state, player);
+      drawMinimap(ctx, state, viewW, player);
 
       // 4. DRAW FULL MAP OVERLAY
       if (showFullMap) {
-          drawFullMap(ctx, state);
+          drawFullMap(ctx, state, viewW, viewH);
       }
 
       animationFrameId = requestAnimationFrame(render);
@@ -314,7 +318,6 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
   const handleAimStart = (e: React.TouchEvent) => {
       for (let i = 0; i < e.changedTouches.length; i++) {
           const t = e.changedTouches[i];
-          // Use a new touch if we don't have one
           if (aimTouchId.current === null) {
               aimTouchId.current = t.identifier;
               setAimStick({ startX: t.clientX, startY: t.clientY, curX: t.clientX, curY: t.clientY });
@@ -331,9 +334,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
                   const dx = t.clientX - prev.startX;
                   const dy = t.clientY - prev.startY;
                   
-                  // Update Input Mouse Pos relative to Center of Screen for rotation
-                  const centerX = CANVAS_WIDTH / 2;
-                  const centerY = CANVAS_HEIGHT / 2;
+                  // Update mouse relative to screen center
+                  const centerX = dims.current.w / 2;
+                  const centerY = dims.current.h / 2;
                   inputRef.current.mouse.x = centerX + dx;
                   inputRef.current.mouse.y = centerY + dy;
 
@@ -353,17 +356,18 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
   };
 
   const isMobile = settings.controls === ControlScheme.MOBILE;
+  const isPortrait = dims.current.h > dims.current.w;
 
   return (
     <div className="relative w-full h-full cursor-none overflow-hidden">
       <canvas
         ref={canvasRef}
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
+        width={dims.current.w}
+        height={dims.current.h}
         className="block"
       />
       
-      {/* MOBILE CONTROLS OVERLAY - SAME AS BEFORE */}
+      {/* MOBILE CONTROLS OVERLAY */}
       {isMobile && (
           <div className="absolute inset-0 pointer-events-none select-none touch-none">
               <div 
@@ -384,13 +388,13 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
                       />
                   </div>
               )}
-              <div className="absolute bottom-6 left-6 w-40 h-40 pointer-events-auto opacity-60 z-10">
+              <div className={`absolute bottom-6 left-6 w-40 h-40 pointer-events-auto opacity-60 z-10 ${isPortrait ? 'bottom-20' : ''}`}>
                   <button className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-12 bg-white/20 rounded-t-lg active:bg-white/50 border border-white/30" onTouchStart={() => handleMobileMove('w', true)} onTouchEnd={() => handleMobileMove('w', false)}></button>
                   <button className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-12 bg-white/20 rounded-b-lg active:bg-white/50 border border-white/30" onTouchStart={() => handleMobileMove('s', true)} onTouchEnd={() => handleMobileMove('s', false)}></button>
                   <button className="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/20 rounded-l-lg active:bg-white/50 border border-white/30" onTouchStart={() => handleMobileMove('a', true)} onTouchEnd={() => handleMobileMove('a', false)}></button>
                   <button className="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/20 rounded-r-lg active:bg-white/50 border border-white/30" onTouchStart={() => handleMobileMove('d', true)} onTouchEnd={() => handleMobileMove('d', false)}></button>
               </div>
-              <div className="absolute bottom-6 right-6 flex gap-4 pointer-events-auto opacity-70 z-10">
+              <div className={`absolute bottom-6 right-6 flex gap-4 pointer-events-auto opacity-70 z-10 ${isPortrait ? 'bottom-20' : ''}`}>
                    <button className="w-20 h-20 bg-red-600/50 rounded-full border-4 border-red-400 active:bg-red-500 flex items-center justify-center font-bold text-white text-lg shadow-lg" onTouchStart={() => handleMobileFire(true)} onTouchEnd={() => handleMobileFire(false)}>FIRE</button>
                    <button className="w-14 h-14 bg-yellow-500/50 rounded-full border-2 border-yellow-400 active:bg-yellow-500 flex items-center justify-center font-bold text-white shadow-lg self-end" onTouchStart={() => handleMobileMove('r', true)} onTouchEnd={() => handleMobileMove('r', false)}>R</button>
               </div>
@@ -404,7 +408,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
 
         {/* Score Board */}
         <div className={`absolute top-4 text-white font-mono text-lg md:text-xl bg-black/70 p-2 rounded border border-white/10 flex gap-4 pointer-events-none transition-all
-            ${isMobile ? 'left-1/2 -translate-x-1/2' : 'left-[130px] md:left-[220px]'}
+            ${isMobile && isPortrait ? 'left-1/2 -translate-x-1/2' : (isMobile ? 'left-1/2 -translate-x-1/2' : 'left-[130px] md:left-[220px]')}
         `}>
            <div className={`font-bold border-r border-white/20 pr-4 ${hudState.time < 60 ? 'text-red-500 animate-pulse' : 'text-yellow-400'}`}>
                 {Math.floor(hudState.time / 60)}:{(Math.floor(hudState.time % 60)).toString().padStart(2, '0')}
@@ -422,7 +426,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
         </div>
 
         {/* Kill Feed */}
-        <div className={`absolute top-16 md:top-4 right-4 text-white font-mono text-[10px] md:text-xs bg-black/50 p-2 rounded w-48 md:w-64 pointer-events-none transition-all`}>
+        <div className={`absolute right-4 text-white font-mono text-[10px] md:text-xs bg-black/50 p-2 rounded w-48 md:w-64 pointer-events-none transition-all
+            ${isPortrait ? 'top-[60px]' : 'top-16 md:top-4'}
+        `}>
           {hudState.feed.map((msg, i) => (
               <div key={i} className="mb-1 opacity-80 truncate">{msg}</div>
           ))}
@@ -430,7 +436,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
 
         {/* Player Status */}
         <div className={`absolute pointer-events-none text-white font-bold bg-gradient-to-r from-blue-900/90 to-transparent p-4 md:p-6 rounded-lg border-l-4 border-blue-500 transition-all
-            ${isMobile ? 'top-4 right-4 w-48 bg-black/60 md:w-96' : 'bottom-4 left-4 w-64 md:w-96'}
+            ${isMobile && isPortrait 
+                ? 'top-20 left-4 w-48 bg-black/60 scale-75 origin-top-left' 
+                : (isMobile ? 'top-4 right-4 w-48 bg-black/60 md:w-96' : 'bottom-4 left-4 w-64 md:w-96')}
         `}>
           <div className="flex justify-between items-end">
              <div>
@@ -453,9 +461,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
 };
 
 // --- HELPER RENDERING FUNCTIONS ---
-const drawMinimap = (ctx: CanvasRenderingContext2D, state: GameState, player?: Player) => {
+const drawMinimap = (ctx: CanvasRenderingContext2D, state: GameState, viewW: number, player?: Player) => {
     if (!player) return;
-    const isSmallScreen = ctx.canvas.width < 768;
+    const isSmallScreen = viewW < 768;
     const size = isSmallScreen ? 100 : 200;
     const margin = 20;
     const scale = isSmallScreen ? 0.08 : 0.15;
@@ -507,17 +515,17 @@ const drawMinimap = (ctx: CanvasRenderingContext2D, state: GameState, player?: P
     ctx.strokeRect(margin, margin, size, size);
 };
 
-const drawFullMap = (ctx: CanvasRenderingContext2D, state: GameState) => {
+const drawFullMap = (ctx: CanvasRenderingContext2D, state: GameState, viewW: number, viewH: number) => {
     ctx.save();
     ctx.fillStyle = '#000000dd';
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.fillRect(0, 0, viewW, viewH);
     const margin = 50;
-    const drawW = CANVAS_WIDTH - margin * 2;
-    const drawH = CANVAS_HEIGHT - margin * 2;
+    const drawW = viewW - margin * 2;
+    const drawH = viewH - margin * 2;
     // Scale against actual map size
     const scale = Math.min(drawW / state.mapWidth, drawH / state.mapHeight);
     
-    ctx.translate(CANVAS_WIDTH/2 - (state.mapWidth * scale)/2, CANVAS_HEIGHT/2 - (state.mapHeight * scale)/2);
+    ctx.translate(viewW/2 - (state.mapWidth * scale)/2, viewH/2 - (state.mapHeight * scale)/2);
     ctx.scale(scale, scale);
     ctx.strokeStyle = '#444';
     ctx.lineWidth = 10;
@@ -550,7 +558,7 @@ const drawFullMap = (ctx: CanvasRenderingContext2D, state: GameState) => {
     ctx.fillStyle = 'white';
     ctx.font = '30px Arial';
     ctx.textAlign = 'center';
-    ctx.fillText("TACTICAL MAP", CANVAS_WIDTH/2, 40);
+    ctx.fillText("TACTICAL MAP", viewW/2, 40);
 };
 
 const AnimatedCrosshair = React.forwardRef<HTMLDivElement, {shooting: boolean, lastShot: number}>(({ shooting, lastShot }, ref) => {

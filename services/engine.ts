@@ -199,7 +199,7 @@ export const createInitialState = (setup: GameSetup, settings: GameSettings): Ga
 };
 
 // --- GAME LOGIC LOOP ---
-export const updateGame = (state: GameState, input: any, dt: number, settings: GameSettings): GameState => {
+export const updateGame = (state: GameState, input: any, dt: number, settings: GameSettings, viewW: number = CANVAS_WIDTH, viewH: number = CANVAS_HEIGHT): GameState => {
   const newState = { ...state };
   const now = Date.now();
   
@@ -518,8 +518,9 @@ export const updateGame = (state: GameState, input: any, dt: number, settings: G
   // 5. CAMERA FOLLOW
   const player = newState.players.find(p => p.id === 'player');
   if (player) {
-      newState.camera.x = player.pos.x - CANVAS_WIDTH / 2;
-      newState.camera.y = player.pos.y - CANVAS_HEIGHT / 2;
+      // Use dynamic view dimensions for camera centering
+      newState.camera.x = player.pos.x - viewW / 2;
+      newState.camera.y = player.pos.y - viewH / 2;
   }
 
   return newState;
