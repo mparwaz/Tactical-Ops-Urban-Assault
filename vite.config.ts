@@ -5,6 +5,9 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
+      // Add the base path here for GitHub Pages deployment
+      // Replace 'your-repo-name' with the exact name of your repository
+      base: '/Tactical-Ops-Urban-Assault/', 
       server: {
         port: 3000,
         host: '0.0.0.0',
