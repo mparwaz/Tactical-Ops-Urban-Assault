@@ -18,6 +18,8 @@ View your app in AI Studio: https://ai.studio/apps/drive/1HuBZsfdytoHoxB9ItZb3_Y
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+
 Tactical Ops: Urban Assault is a high-octane, top-down tactical shooter optimized for the modern web in 2025. Built with a focus on performance and competitive depth, the game blends classic "run-and-gun" mechanics with modern Battle Royale elements, all running seamlessly in a browser or as a mobile PWA.
 The Experience
 Set in a variety of procedurally generated biomes—from the neon-lit corridors of an Urban City to the sprawling ruins of a Desert Wasteland—players take control of specialized Operators. The gameplay is defined by high-stakes encounters where positioning and weapon mastery are more important than raw speed.
