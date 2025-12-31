@@ -377,6 +377,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
                   onTouchEnd={handleAimEnd}
                   onTouchCancel={handleAimEnd}
               />
+              <button 
+                  className="absolute top-6 right-6 w-12 h-12 bg-blue-500/50 rounded border-2 border-blue-400 text-white font-bold text-xs shadow-lg pointer-events-auto z-20"
+                  onTouchStart={(e) => { e.stopPropagation(); setShowFullMap(prev => !prev); }}
+              >
+                  MAP
+              </button>
               {aimStick && (
                   <div 
                     className="absolute w-24 h-24 rounded-full border-2 border-white/30 bg-black/20 pointer-events-none"
