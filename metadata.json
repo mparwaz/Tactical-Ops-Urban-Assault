@@ -1,0 +1,5 @@
+{
+  "name": "Tactical Ops: Urban Assault",
+  "description": "A fast-paced, top-down tactical shooter inspired by Call of Duty multiplayer. Features 3-lane map design, enterable buildings, smart AI bots, and multiple game modes like Team Deathmatch and Domination.",
+  "requestFramePermissions": []
+}
