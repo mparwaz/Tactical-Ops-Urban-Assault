@@ -217,39 +217,42 @@ const App: React.FC = () => {
     <div className="w-full h-screen bg-neutral-900 flex items-center justify-center overflow-hidden font-sans select-none">
       {/* POST MATCH VICTORY SCREEN */}
       {postMatchData ? (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-black relative z-50 p-4">
+          <div className="fixed inset-0 w-full h-full flex flex-col items-center justify-center bg-black z-50 p-4 md:p-8 overflow-hidden">
                <div className="absolute inset-0 opacity-50 bg-[url('https://images.unsplash.com/photo-1542259681-d4cd7193bc70?q=80&w=2669&auto=format&fit=crop')] bg-cover bg-center grayscale"></div>
                <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/50 to-black"></div>
                
-               <div className="relative z-10 text-center animate-in fade-in zoom-in duration-500 w-full max-w-4xl flex flex-col items-center">
-                    <h1 className={`text-5xl md:text-8xl font-black tracking-tighter italic mb-4 ${postMatchData.winner === Team.ALLIED ? 'text-blue-500' : 'text-red-500'}`}>
-                        {postMatchData.winner === Team.ALLIED ? 'VICTORY' : 'DEFEAT'}
-                    </h1>
+               <div className="relative z-10 text-center animate-in fade-in zoom-in duration-500 w-full max-w-4xl h-full flex flex-col items-center justify-center">
+                    {/* Header Section: Flex-none to keep size */}
+                    <div className="flex-none flex flex-col items-center mb-4 md:mb-6">
+                        <h1 className={`text-4xl md:text-8xl font-black tracking-tighter italic leading-tight ${postMatchData.winner === Team.ALLIED ? 'text-blue-500' : 'text-red-500'}`}>
+                            {postMatchData.winner === Team.ALLIED ? 'VICTORY' : 'DEFEAT'}
+                        </h1>
+                        
+                        {!isSoloMode && (
+                            <div className="text-sm md:text-2xl text-white font-mono mt-1 md:mt-4 tracking-widest bg-black/50 inline-block px-4 py-1 rounded">
+                                ALLIED <span className="text-blue-400">{postMatchData.scores[Team.ALLIED]}</span> - <span className="text-red-400">{postMatchData.scores[Team.AXIS]}</span> AXIS
+                            </div>
+                        )}
+                        {isSoloMode && (
+                            <div className="text-sm md:text-2xl text-white font-mono mt-1 md:mt-4 tracking-widest bg-black/50 inline-block px-4 py-1 rounded">
+                                 MISSION {postMatchData.winner === Team.ALLIED ? 'ACCOMPLISHED' : 'FAILED'}
+                            </div>
+                        )}
+                    </div>
                     
-                    {!isSoloMode && (
-                        <div className="text-lg md:text-2xl text-white font-mono mb-8 md:mb-12 tracking-widest bg-black/50 inline-block px-4 py-1 rounded">
-                            ALLIED <span className="text-blue-400">{postMatchData.scores[Team.ALLIED]}</span> - <span className="text-red-400">{postMatchData.scores[Team.AXIS]}</span> AXIS
-                        </div>
-                    )}
-                    {isSoloMode && (
-                        <div className="text-lg md:text-2xl text-white font-mono mb-8 md:mb-12 tracking-widest bg-black/50 inline-block px-4 py-1 rounded">
-                             MISSION {postMatchData.winner === Team.ALLIED ? 'ACCOMPLISHED' : 'FAILED'}
-                        </div>
-                    )}
-                    
-                    {/* TEAM SQUAD REPORT */}
-                    <div className="bg-neutral-900/90 border border-white/10 p-4 md:p-8 rounded-xl w-full backdrop-blur overflow-y-auto max-h-[50vh]">
-                        <h2 className="text-left text-white font-bold text-lg md:text-xl border-b border-white/20 pb-4 mb-4 flex justify-between">
+                    {/* TEAM SQUAD REPORT: Flex-1 to take remaining space, min-h-0 to allow scrolling */}
+                    <div className="flex-1 min-h-0 w-full bg-neutral-900/90 border border-white/10 p-4 md:p-8 rounded-xl backdrop-blur overflow-y-auto flex flex-col">
+                        <h2 className="flex-none text-left text-white font-bold text-lg md:text-xl border-b border-white/20 pb-2 mb-2 flex justify-between">
                             <span>{isSoloMode ? 'OPERATOR DEBRIEF' : 'SQUAD REPORT'}</span>
                             <span className="text-blue-400 text-xs md:text-sm self-end">TASK FORCE 141</span>
                         </h2>
-                        <div className="grid grid-cols-4 gap-2 md:gap-4 text-left text-gray-400 text-xs md:text-sm mb-2 font-mono">
+                        <div className="flex-none grid grid-cols-4 gap-2 md:gap-4 text-left text-gray-400 text-xs md:text-sm mb-2 font-mono">
                             <div>OPERATOR</div>
                             <div>STATUS</div>
                             <div>KILLS</div>
                             <div>DEATHS</div>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-2 overflow-y-auto flex-1 min-h-0 custom-scrollbar pr-1">
                             {reportPlayers
                                 .sort((a,b) => b.kills - a.kills)
                                 .map(p => (
@@ -266,7 +269,7 @@ const App: React.FC = () => {
                         </div>
                         {/* TEAM TOTALS FOOTER - Hide in Solo Modes */}
                         {!isSoloMode && (
-                            <div className="grid grid-cols-4 gap-2 md:gap-4 text-left items-center p-2 md:p-3 mt-4 border-t border-white/20 text-yellow-500 font-bold font-mono">
+                            <div className="flex-none grid grid-cols-4 gap-2 md:gap-4 text-left items-center p-2 md:p-3 mt-4 border-t border-white/20 text-yellow-500 font-bold font-mono text-xs md:text-base">
                                 <div className="col-span-2">SQUAD TOTALS</div>
                                 <div>{getAlliedStats().kills}</div>
                                 <div>{getAlliedStats().deaths}</div>
@@ -274,13 +277,16 @@ const App: React.FC = () => {
                         )}
                     </div>
 
-                    <button 
-                        onClick={returnToLobby}
-                        onMouseEnter={playHover}
-                        className="mt-8 md:mt-12 px-8 md:px-12 py-3 md:py-4 bg-yellow-500 text-black font-black text-xl md:text-2xl uppercase tracking-widest hover:bg-yellow-400 transition-transform hover:scale-105 rounded shadow-lg shadow-yellow-500/20"
-                    >
-                        RETURN TO LOBBY
-                    </button>
+                    {/* Footer Button: Flex-none to keep size */}
+                    <div className="flex-none mt-4 md:mt-8">
+                        <button 
+                            onClick={returnToLobby}
+                            onMouseEnter={playHover}
+                            className="px-8 md:px-12 py-3 md:py-4 bg-yellow-500 text-black font-black text-sm md:text-2xl uppercase tracking-widest hover:bg-yellow-400 transition-transform hover:scale-105 rounded shadow-lg shadow-yellow-500/20"
+                        >
+                            RETURN TO LOBBY
+                        </button>
+                    </div>
                </div>
           </div>
       ) : !inGame ? (
