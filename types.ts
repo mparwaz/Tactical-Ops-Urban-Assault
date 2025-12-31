@@ -46,6 +46,11 @@ export enum Orientation {
   LANDSCAPE = 'LANDSCAPE'
 }
 
+export enum FireMode {
+  MANUAL = 'MANUAL',
+  AUTO = 'AUTO'
+}
+
 export enum MapId {
   URBAN = 'URBAN',
   DESERT = 'DESERT',
@@ -70,6 +75,7 @@ export interface GameSettings {
   enemyCount: number;
   botCount: number; // Generic count for FFA/BR
   orientation: Orientation;
+  fireMode: FireMode;
 }
 
 export interface WeaponStats {

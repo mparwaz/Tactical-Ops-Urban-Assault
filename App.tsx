@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import GameCanvas from './components/GameCanvas';
-import { Team, GameMode, WeaponType, GameSetup, Difficulty, ControlScheme, GameSettings, Player, MatchRecord, MapId, Orientation } from './types';
+import { Team, GameMode, WeaponType, GameSetup, Difficulty, ControlScheme, GameSettings, Player, MatchRecord, MapId, Orientation, FireMode } from './types';
 import { WEAPONS, OPERATORS, MAP_INFO } from './constants';
 import { soundManager } from './services/soundManager';
 
@@ -57,7 +57,8 @@ const App: React.FC = () => {
           allyCount: 4,
           enemyCount: 5,
           botCount: 29,
-          orientation: Orientation.DEFAULT
+          orientation: Orientation.DEFAULT,
+          fireMode: FireMode.MANUAL
       };
       if (!saved) return defaults;
       // Merge in case saved data is missing new fields
@@ -566,6 +567,30 @@ const App: React.FC = () => {
                                    <p>Combat records, loadouts, and settings are <span className="text-green-400">automatically saved</span> to this device. Use the <span className="text-red-500">Danger Zone</span> below to reset all data.</p>
                                </div>
                            </div>
+                        </div>
+
+                        {/* FIRE MODE */}
+                        <div className="bg-white/5 p-4 rounded">
+                            <label className="block text-gray-400 mb-2 uppercase tracking-wide text-sm">Firing Mode</label>
+                            <div className="flex flex-col md:flex-row gap-4">
+                                <button 
+                                    onClick={() => { playClick(); setSettings(s => ({...s, fireMode: FireMode.MANUAL})); }}
+                                    onMouseEnter={playHover}
+                                    className={`flex-1 py-3 font-bold rounded text-sm md:text-base ${settings.fireMode === FireMode.MANUAL ? 'bg-orange-600 text-white' : 'bg-black/30 text-gray-500'}`}
+                                >
+                                    MANUAL FIRE
+                                </button>
+                                <button 
+                                    onClick={() => { playClick(); setSettings(s => ({...s, fireMode: FireMode.AUTO})); }}
+                                    onMouseEnter={playHover}
+                                    className={`flex-1 py-3 font-bold rounded text-sm md:text-base ${settings.fireMode === FireMode.AUTO ? 'bg-orange-600 text-white' : 'bg-black/30 text-gray-500'}`}
+                                >
+                                    AUTO FIRE
+                                </button>
+                            </div>
+                            <p className="text-[10px] text-gray-500 mt-2">
+                                {settings.fireMode === FireMode.MANUAL ? 'Standard Mode: Tap or Hold Attack button to fire.' : 'Smart Mode: Automatically fires when crosshair is over an enemy.'}
+                            </p>
                         </div>
 
                         {/* CONTROLS SELECTOR */}

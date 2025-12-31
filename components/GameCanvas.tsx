@@ -68,7 +68,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
 
     const render = () => {
       // 1. UPDATE
-      stateRef.current = updateGame(stateRef.current, inputRef.current, 16);
+      stateRef.current = updateGame(stateRef.current, inputRef.current, 16, settings);
       const state = stateRef.current;
       const player = state.players.find(x => x.id === 'player');
 
@@ -82,7 +82,7 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
               scoreB: state.scores[Team.AXIS],
               time: state.timeRemaining,
               feed: state.killFeed,
-              shooting: inputRef.current.mouseDown && player.ammo > 0,
+              shooting: (inputRef.current.mouseDown || (settings.fireMode === 'AUTO' && player.lastShotTime > Date.now() - 100)) && player.ammo > 0, // Visual fix for auto-fire crosshair
               lastShot: player.lastShotTime,
               aliveCount: alive,
               kills: player.kills,

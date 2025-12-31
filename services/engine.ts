@@ -1,7 +1,7 @@
 
 import { 
   GameState, Player, Bullet, Vector2, Team, WeaponType, 
-  GameMode, ControlPoint, Obstacle, GameSetup, GameSettings, Difficulty, LootItem, Zone 
+  GameMode, ControlPoint, Obstacle, GameSetup, GameSettings, Difficulty, LootItem, Zone, FireMode 
 } from '../types';
 import { 
   WORLD_WIDTH, WORLD_HEIGHT, PLAYER_RADIUS, PLAYER_SPEED, SPRINT_MULTIPLIER,
@@ -199,7 +199,7 @@ export const createInitialState = (setup: GameSetup, settings: GameSettings): Ga
 };
 
 // --- GAME LOGIC LOOP ---
-export const updateGame = (state: GameState, input: any, dt: number): GameState => {
+export const updateGame = (state: GameState, input: any, dt: number, settings: GameSettings): GameState => {
   const newState = { ...state };
   const now = Date.now();
   
@@ -261,8 +261,28 @@ export const updateGame = (state: GameState, input: any, dt: number): GameState 
       // Aim
       p.angle = Math.atan2(input.mouse.y + newState.camera.y - p.pos.y, input.mouse.x + newState.camera.x - p.pos.x);
 
-      // Shooting
-      if (input.mouseDown && !p.isReloading && p.ammo > 0) {
+      // --- FIRE LOGIC (MANUAL VS AUTO) ---
+      let shouldShoot = input.mouseDown;
+      
+      // Auto Fire: Trigger if aiming at an enemy
+      if (settings.fireMode === FireMode.AUTO && !shouldShoot) {
+          const mouseWorldX = input.mouse.x + newState.camera.x;
+          const mouseWorldY = input.mouse.y + newState.camera.y;
+          const mouseWorldPos = {x: mouseWorldX, y: mouseWorldY};
+          
+          // Check if cursor is over any active enemy
+          const targetFound = newState.players.some(enemy => 
+              enemy.active && 
+              enemy.id !== p.id && // Don't shoot self
+              (isTeamMode ? enemy.team !== p.team : true) && // Don't shoot allies
+              dist(mouseWorldPos, enemy.pos) < enemy.radius + 15 && // Hitbox tolerance
+              !checkWallBetween(p.pos, enemy.pos, newState.obstacles) // Optional: prevent wall banging for auto-fire? 
+          );
+          
+          if (targetFound) shouldShoot = true;
+      }
+
+      if (shouldShoot && !p.isReloading && p.ammo > 0) {
          tryFireWeapon(p, newState, now);
       }
       // Reload
