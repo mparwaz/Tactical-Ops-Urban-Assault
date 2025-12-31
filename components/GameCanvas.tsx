@@ -377,8 +377,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
                   onTouchEnd={handleAimEnd}
                   onTouchCancel={handleAimEnd}
               />
+              {/* Map Button - Positioned Below Minimap (Left Side) */}
               <button 
-                  className="absolute top-6 right-6 w-12 h-12 bg-blue-500/50 rounded border-2 border-blue-400 text-white font-bold text-xs shadow-lg pointer-events-auto z-20"
+                  className="absolute top-[130px] left-6 w-12 h-12 bg-blue-500/50 rounded border-2 border-blue-400 text-white font-bold text-xs shadow-lg pointer-events-auto z-20"
                   onTouchStart={(e) => { e.stopPropagation(); setShowFullMap(prev => !prev); }}
               >
                   MAP
@@ -431,20 +432,23 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ onGameOver, gameSetup, settings
            )}
         </div>
 
-        {/* Kill Feed */}
-        <div className={`absolute right-4 text-white font-mono text-[10px] md:text-xs bg-black/50 p-2 rounded w-48 md:w-64 pointer-events-none transition-all
-            ${isPortrait ? 'top-[60px]' : 'top-16 md:top-4'}
+        {/* Kill Feed - Adjusted for Mobile */}
+        <div className={`absolute text-white font-mono text-[10px] md:text-xs bg-black/50 p-2 rounded w-48 md:w-64 pointer-events-none transition-all
+            ${isMobile 
+                ? 'left-4 top-[180px]' // Mobile: Left side, below map stuff to clear right aim zone
+                : 'right-4 top-16 md:top-4' // PC: Right side
+            }
         `}>
           {hudState.feed.map((msg, i) => (
               <div key={i} className="mb-1 opacity-80 truncate">{msg}</div>
           ))}
         </div>
 
-        {/* Player Status */}
+        {/* Player Status - Unified Top Right for Mobile */}
         <div className={`absolute pointer-events-none text-white font-bold bg-gradient-to-r from-blue-900/90 to-transparent p-4 md:p-6 rounded-lg border-l-4 border-blue-500 transition-all
-            ${isMobile && isPortrait 
-                ? 'top-20 left-4 w-48 bg-black/60 scale-75 origin-top-left' 
-                : (isMobile ? 'top-4 right-4 w-48 bg-black/60 md:w-96' : 'bottom-4 left-4 w-64 md:w-96')}
+            ${isMobile 
+                ? 'top-4 right-4 w-48 bg-black/60 scale-90 origin-top-right' 
+                : 'bottom-4 left-4 w-64 md:w-96'}
         `}>
           <div className="flex justify-between items-end">
              <div>
